@@ -22,6 +22,17 @@ GitHub Actions (30 dk'da bir)          Telefon
 
 Hangi ürünlerin taranacağı `scraper/sources.json` içinde. Arama kelimesi eklemek için `queries` listesine satır eklemen yeter.
 
+## Mağaza durumu
+
+| Mağaza | Durum |
+|---|---|
+| Trendyol | ✅ Kategori sayfaları taranıyor (robots.txt izin veriyor) |
+| Hepsiburada | ⏸ Botlara kapalı (403). Ortaklık programı onayı gerekiyor |
+| n11 | ⏸ Botlara kapalı (403). Ortaklık programı onayı gerekiyor |
+| Amazon | ⏸ Listelerde indirim bilgisi yok. Amazon Associates API gerekiyor |
+
+Kapalı mağazalar `scraper/sources.json` içinde hazır duruyor; `"enabled": true` yapınca devreye girer.
+
 ## Yol haritası
 
 1. ✅ Trendyol tarayıcısı ve indirim akışı
