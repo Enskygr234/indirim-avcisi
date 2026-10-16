@@ -269,26 +269,34 @@ def scrape_trendyol(cfg: dict, delay: float) -> tuple[list[dict], dict]:
     """
     products: dict[str, dict] = {}
     log_lines = []
+    per_cat = int(cfg.get("pages_per_category", 1))
     for item in cfg.get("pages", []):
         path, cat = item["path"], item.get("category", "Diğer")
-        url = TY_WEB + path
-        try:
-            text = http_get(url, accept="text/html")
-            found = []
-            for blob in json_blobs_from_html(text):
-                found.extend(ty_parse_any(blob, cat))
-            msg = f"{path}: {len(found)} ürün" + ("" if found else f" (sayfa {len(text)} bayt, ürün verisi bulunamadı)")
-            if not found and os.environ.get("SCRAPER_DEBUG_DIR"):
-                write_debug(os.environ["SCRAPER_DEBUG_DIR"], path, text)
-        except Blocked as e:
-            found, msg = [], f"{path}: engellendi - {e}"
-        except Exception as e:
-            found, msg = [], f"{path}: hata - {type(e).__name__}: {e}"
-        log("  " + msg)
-        log_lines.append(msg)
-        for p in found:
-            products.setdefault(p["id"], p)
-        time.sleep(delay)
+        for page in range(1, per_cat + 1):
+            url = TY_WEB + path + (f"?pi={page}" if page > 1 else "")
+            label = path + (f" s{page}" if page > 1 else "")
+            try:
+                text = http_get(url, accept="text/html")
+                found = []
+                for blob in json_blobs_from_html(text):
+                    found.extend(ty_parse_any(blob, cat))
+                msg = f"{label}: {len(found)} ürün" + ("" if found else f" (sayfa {len(text)} bayt, ürün verisi bulunamadı)")
+                if not found and os.environ.get("SCRAPER_DEBUG_DIR"):
+                    write_debug(os.environ["SCRAPER_DEBUG_DIR"], path, text)
+            except Blocked as e:
+                found, msg = [], f"{label}: engellendi - {e}"
+            except Exception as e:
+                found, msg = [], f"{label}: hata - {type(e).__name__}: {e}"
+            log("  " + msg)
+            log_lines.append(msg)
+            new = 0
+            for p in found:
+                if p["id"] not in products:
+                    products[p["id"]] = p
+                    new += 1
+            time.sleep(delay)
+            if new == 0:  # sayfa boş ya da aynı ürünler: sonraki sayfalara gerek yok
+                break
     status = {
         "ok": bool(products),
         "count": len(products),

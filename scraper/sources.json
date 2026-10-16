@@ -5,14 +5,39 @@
   "trendyol": {
     "enabled": true,
     "pages": [
-      {"path": "/cep-telefonu-x-c103498", "category": "Elektronik"},
-      {"path": "/laptop-x-c103108", "category": "Elektronik"},
-      {"path": "/akilli-saat-x-c1240", "category": "Elektronik"},
-      {"path": "/buzdolabi-x-c103623", "category": "Ev"},
-      {"path": "/spor-ayakkabi-x-c109", "category": "Giyim"},
-      {"path": "/kulaklik-x-c1061", "category": "Elektronik"},
-      {"path": "/parfum-x-c86", "category": "Kozmetik"},
-      {"path": "/mont-x-c118", "category": "Giyim"}
-    ]
+      {
+        "path": "/cep-telefonu-x-c103498",
+        "category": "Elektronik"
+      },
+      {
+        "path": "/laptop-x-c103108",
+        "category": "Elektronik"
+      },
+      {
+        "path": "/akilli-saat-x-c1240",
+        "category": "Elektronik"
+      },
+      {
+        "path": "/buzdolabi-x-c103623",
+        "category": "Ev"
+      },
+      {
+        "path": "/spor-ayakkabi-x-c109",
+        "category": "Giyim"
+      },
+      {
+        "path": "/kulaklik-x-c1061",
+        "category": "Elektronik"
+      },
+      {
+        "path": "/parfum-x-c86",
+        "category": "Kozmetik"
+      },
+      {
+        "path": "/mont-x-c118",
+        "category": "Giyim"
+      }
+    ],
+    "pages_per_category": 3
   }
 }
