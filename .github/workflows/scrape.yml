@@ -1,0 +1,61 @@
+name: İndirimleri tara
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # 30 dakikada bir (GitHub bazen birkaç dakika geciktirir)
+  workflow_dispatch:          # Actions sekmesinden elle çalıştırma
+  push:
+    branches: [main]
+    paths: ["scraper/**", ".github/workflows/scrape.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Önceki liste ve fiyat geçmişi "data" dalında duruyor (ilk seferde yok, sorun değil)
+      - name: Önceki veriyi al
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: data-branch
+        continue-on-error: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tara
+        id: scan
+        continue-on-error: true   # başarısız olsa da durum bilgisi yayımlansın
+        run: |
+          mkdir -p data-branch
+          python scraper/scrape.py --out data-branch
+
+      - name: Yayımla
+        run: |
+          cd data-branch
+          test -f deals.json || exit 0
+          # Tek commit'lik dal: repo her turda büyümesin
+          rm -rf .git
+          git init -q -b data
+          git config user.name "indirim-avcisi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deals.json history.json
+          git commit -q -m "İndirimler güncellendi $(date -u +%FT%TZ)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:data
+
+      - name: Tarama başarısızsa işaretle
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo "::error::Hiçbir mağaza taranamadı. Ayrıntılar 'Tara' adımının kaydında."
+          exit 1

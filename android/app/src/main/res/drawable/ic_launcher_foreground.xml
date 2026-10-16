@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Etiket (fiyat etiketi) üzerinde yüzde işareti -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- etiket gövdesi -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38,30 L70,30 Q76,30 76,36 L76,66 Q76,70 73,72 L57,84 Q54,86 51,84 L35,72 Q32,70 32,66 L32,36 Q32,30 38,30 Z" />
+    <!-- delik -->
+    <path
+        android:fillColor="#FFFF5A36"
+        android:pathData="M54,36 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <!-- yüzde: iki daire ve çapraz çizgi -->
+    <path
+        android:fillColor="#FF14110F"
+        android:pathData="M45,52 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#FF14110F"
+        android:pathData="M63,70 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
+    <path
+        android:fillColor="#FF14110F"
+        android:pathData="M62,46 L67,49 L46,76 L41,73 Z" />
+</vector>

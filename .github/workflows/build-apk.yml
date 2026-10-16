@@ -1,0 +1,53 @@
+name: APK derle
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/build-apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+
+      - name: Derle
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: APK'yı adlandır
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk indirim-avcisi.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: indirim-avcisi-apk
+          path: indirim-avcisi.apk
+
+      # Sabit indirme linki: .../releases/download/son-surum/indirim-avcisi.apk
+      - name: İndirme linkini güncelle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete son-surum --yes --cleanup-tag || true
+          gh release create son-surum indirim-avcisi.apk \
+            --title "İndirim Avcısı - son sürüm" \
+            --notes "Derleme #${{ github.run_number }}: $(git log -1 --pretty=%s)" \
+            --target "${{ github.sha }}"

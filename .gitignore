@@ -1,0 +1,10 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+__pycache__/
+data-branch/
+*.apk
+!android/app/debug.keystore

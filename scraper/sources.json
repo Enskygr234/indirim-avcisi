@@ -1,0 +1,24 @@
+{
+  "min_discount_percent": 10,
+  "max_deals": 600,
+  "request_delay_seconds": 3,
+  "trendyol": {
+    "enabled": true,
+    "queries": [
+      {"q": "telefon", "category": "Elektronik"},
+      {"q": "laptop", "category": "Elektronik"},
+      {"q": "kulaklık", "category": "Elektronik"},
+      {"q": "akıllı saat", "category": "Elektronik"},
+      {"q": "televizyon", "category": "Elektronik"},
+      {"q": "spor ayakkabı", "category": "Giyim"},
+      {"q": "mont", "category": "Giyim"},
+      {"q": "parfüm", "category": "Kozmetik"},
+      {"q": "cilt bakım", "category": "Kozmetik"},
+      {"q": "kahve makinesi", "category": "Ev"},
+      {"q": "süpürge", "category": "Ev"},
+      {"q": "tencere seti", "category": "Ev"},
+      {"q": "oyuncak", "category": "Çocuk"},
+      {"q": "kitap", "category": "Kitap"}
+    ]
+  }
+}
