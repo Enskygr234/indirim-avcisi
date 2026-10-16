@@ -1,24 +1,18 @@
 {
   "min_discount_percent": 10,
   "max_deals": 600,
-  "request_delay_seconds": 3,
+  "request_delay_seconds": 4,
   "trendyol": {
     "enabled": true,
-    "queries": [
-      {"q": "telefon", "category": "Elektronik"},
-      {"q": "laptop", "category": "Elektronik"},
-      {"q": "kulaklık", "category": "Elektronik"},
-      {"q": "akıllı saat", "category": "Elektronik"},
-      {"q": "televizyon", "category": "Elektronik"},
-      {"q": "spor ayakkabı", "category": "Giyim"},
-      {"q": "mont", "category": "Giyim"},
-      {"q": "parfüm", "category": "Kozmetik"},
-      {"q": "cilt bakım", "category": "Kozmetik"},
-      {"q": "kahve makinesi", "category": "Ev"},
-      {"q": "süpürge", "category": "Ev"},
-      {"q": "tencere seti", "category": "Ev"},
-      {"q": "oyuncak", "category": "Çocuk"},
-      {"q": "kitap", "category": "Kitap"}
+    "pages": [
+      {"path": "/cep-telefonu-x-c103498", "category": "Elektronik"},
+      {"path": "/laptop-x-c103108", "category": "Elektronik"},
+      {"path": "/akilli-saat-x-c1240", "category": "Elektronik"},
+      {"path": "/buzdolabi-x-c103623", "category": "Ev"},
+      {"path": "/spor-ayakkabi-x-c109", "category": "Giyim"},
+      {"path": "/kulaklik-x-c1061", "category": "Elektronik"},
+      {"path": "/parfum-x-c86", "category": "Kozmetik"},
+      {"path": "/mont-x-c118", "category": "Giyim"}
     ]
   }
 }

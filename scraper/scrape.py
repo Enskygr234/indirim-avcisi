@@ -186,10 +186,6 @@ def json_blobs_from_html(html: str):
 
 # ------------------------------------------------------------ Trendyol ----
 
-TY_SEARCH_APIS = [
-    "https://apigw.trendyol.com/discovery-web-searchgw-service/v2/api/infinite-scroll/sr",
-    "https://public.trendyol.com/discovery-web-searchgw-service/v2/api/infinite-scroll/sr",
-]
 TY_WEB = "https://www.trendyol.com"
 TY_CDN = "https://cdn.dsmcdn.com"
 
@@ -240,49 +236,37 @@ def ty_parse_any(obj, category: str) -> list[dict]:
 
 
 def scrape_trendyol(cfg: dict, delay: float) -> tuple[list[dict], dict]:
+    """Trendyol kategori sayfalarını tarar.
+
+    Not: Trendyol robots.txt kuralları arama (/sr) ve flaş indirim sayfalarını
+    yasaklıyor; kategori sayfalarına izin veriyor. Bu yüzden sadece onlara bakıyoruz.
+    """
     products: dict[str, dict] = {}
-    working = None  # ilk çalışan yöntemi hatırla, gereksiz istek atma
-    errors = []
-    for item in cfg.get("queries", []):
-        q, cat = item["q"], item.get("category", "Diğer")
-        params = {"q": q, "qt": q, "st": q, "os": "1", "pi": "1", "culture": "tr-TR", "channelId": "1"}
-        attempts = []
-        for api in TY_SEARCH_APIS:
-            attempts.append(("api", api + "?" + urllib.parse.urlencode(params)))
-        attempts.append(("html", TY_WEB + "/sr?" + urllib.parse.urlencode({"q": q, "os": "1"})))
-        if working:
-            attempts.sort(key=lambda a: a[1].split("?")[0] != working)
-        found = []
-        for kind, url in attempts:
-            try:
-                text = http_get(url)
-                time.sleep(delay)
-                if kind == "api":
-                    found = ty_parse_any(json.loads(text), cat)
-                else:
-                    found = []
-                    for blob in json_blobs_from_html(text):
-                        found.extend(ty_parse_any(blob, cat))
-                if found:
-                    working = url.split("?")[0]
-                    log(f"  '{q}': {len(found)} ürün ({kind}: {working})")
-                    break
-                log(f"  '{q}': {kind} yanıt verdi ama ürün çıkmadı ({url.split('?')[0]})")
-            except Blocked as e:
-                log(f"  '{q}': engellendi - {e} ({url.split('?')[0]})")
-                errors.append(str(e))
-                time.sleep(delay)
-            except Exception as e:
-                log(f"  '{q}': hata - {type(e).__name__}: {e}")
-                errors.append(f"{type(e).__name__}: {e}")
-                time.sleep(delay)
+    log_lines = []
+    for item in cfg.get("pages", []):
+        path, cat = item["path"], item.get("category", "Diğer")
+        url = TY_WEB + path
+        try:
+            text = http_get(url, accept="text/html")
+            found = []
+            for blob in json_blobs_from_html(text):
+                found.extend(ty_parse_any(blob, cat))
+            msg = f"{path}: {len(found)} ürün" + ("" if found else f" (sayfa {len(text)} bayt, ürün verisi bulunamadı)")
+        except Blocked as e:
+            found, msg = [], f"{path}: engellendi - {e}"
+        except Exception as e:
+            found, msg = [], f"{path}: hata - {type(e).__name__}: {e}"
+        log("  " + msg)
+        log_lines.append(msg)
         for p in found:
             products.setdefault(p["id"], p)
+        time.sleep(delay)
     status = {
         "ok": bool(products),
         "count": len(products),
-        "method": working,
-        "error": None if products else (errors[-1] if errors else "Ürün bulunamadı"),
+        "method": "kategori sayfaları",
+        "error": None if products else (log_lines[-1] if log_lines else "Sayfa tanımlı değil"),
+        "log": log_lines,  # teşhis için: her sayfada ne oldu
     }
     return list(products.values()), status
 
