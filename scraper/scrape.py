@@ -61,7 +61,12 @@ def robots_allows(url: str) -> bool:
             raw = http_get(base + "/robots.txt", check_robots=False, accept="text/plain")
             rp.parse(raw.splitlines())
             _robots_cache[base] = rp
-        except Exception as e:  # robots.txt yoksa/okunamazsa standart: izinli
+        except Blocked as e:  # robots.txt bile reddedildiyse siteye hiç girme
+            log(f"  robots.txt reddedildi ({base}): {e}")
+            rp = urllib.robotparser.RobotFileParser()
+            rp.disallow_all = True
+            _robots_cache[base] = rp
+        except Exception as e:  # robots.txt yoksa standart: izinli
             log(f"  robots.txt okunamadı ({base}): {e}")
             _robots_cache[base] = None
     rp = _robots_cache[base]
@@ -235,54 +240,152 @@ def ty_parse_any(obj, category: str) -> list[dict]:
     return out
 
 
-def write_debug(out_dir: str, path: str, html: str) -> None:
-    """Ürün bulunamayan sayfanın yapısını özetler (sayfanın tamamını kaydetmez)."""
-    os.makedirs(out_dir, exist_ok=True)
-    lines = [f"PATH {path} LEN {len(html)}"]
-    lines += ["SCRIPT " + m.group(0)[:160] for m in re.finditer(r"<script[^>]*>", html)][:60]
-    lines += ["WINVAR " + m.group(0) for m in re.finditer(r"window\[?[\"']?[\w\-\.]+[\"']?\]?\s*=", html)][:40]
-    for i, m in enumerate(re.finditer(r"-p-\d+", html)):
-        if i >= 4:
+# ------------------------------------------------- Diğer mağazalar ----
+
+G_NAME_KEYS = ("name", "title", "productName", "displayName")
+G_URL_KEYS = ("url", "productUrl", "link", "uri", "href", "detailUrl")
+G_CURRENT_KEYS = ("discountedPrice", "sellingPrice", "current", "salePrice", "finalPrice",
+                  "price", "amount", "lowPrice", "displayPrice", "currentPrice")
+G_OLD_KEYS = ("originalPrice", "oldPrice", "old", "marketPrice", "listPrice", "strikethroughPrice",
+              "strikeThroughPrice", "priceBeforeDiscount", "originalAmount", "insteadOfPrice")
+G_IMG_KEYS = ("image", "imageUrl", "img", "thumbnail", "imageURL", "images", "picture")
+
+
+def g_prices(d: dict) -> tuple[float | None, float | None]:
+    pools = [d]
+    for k in ("price", "prices", "offers", "priceInfo", "pricing"):
+        v = d.get(k)
+        if isinstance(v, dict):
+            pools.append(v)
+        elif isinstance(v, list) and v and isinstance(v[0], dict):
+            pools.append(v[0])
+    current, old = [], []
+    for pool in pools:
+        for k in G_CURRENT_KEYS:
+            if k in pool and not isinstance(pool[k], (dict, list)):
+                n = to_number(pool[k])
+                if n:
+                    current.append(n)
+            elif k in pool and isinstance(pool[k], dict) and "value" in pool[k]:
+                n = to_number(pool[k])
+                if n:
+                    current.append(n)
+        for k in G_OLD_KEYS:
+            if k in pool:
+                n = to_number(pool[k])
+                if n:
+                    old.append(n)
+    cur = min(current) if current else None
+    o = max(old) if old else None
+    return cur, o
+
+
+def g_first_str(v) -> str | None:
+    if isinstance(v, str):
+        return v
+    if isinstance(v, list) and v:
+        return g_first_str(v[0])
+    if isinstance(v, dict):
+        for k in ("url", "src", "link", "contentUrl"):
+            if isinstance(v.get(k), str):
+                return v[k]
+    return None
+
+
+def generic_product_from(d: dict, store: dict, category: str) -> dict | None:
+    name = next((d[k] for k in G_NAME_KEYS if isinstance(d.get(k), str) and len(d[k]) > 3), None)
+    if not name:
+        return None
+    url = next((d[k] for k in G_URL_KEYS if isinstance(d.get(k), str)), None)
+    if not url and isinstance(d.get("offers"), dict):
+        url = d["offers"].get("url")
+    if not isinstance(url, str):
+        return None
+    m = re.search(store["product_url_regex"], url)
+    if not m:
+        return None
+    price, old = g_prices(d)
+    if not price:
+        return None
+    base = store["base"]
+    full_url = url if url.startswith("http") else urllib.parse.urljoin(base + "/", url.lstrip("/"))
+    full_url = full_url.split("#")[0]
+    if not store.get("keep_query"):
+        full_url = full_url.split("?")[0]
+    img = None
+    for k in G_IMG_KEYS:
+        img = g_first_str(d.get(k))
+        if img:
             break
-        s = max(0, m.start() - 700)
-        lines.append(f"CTX{i} " + html[s:m.end() + 500].replace("\n", " "))
-    for key in ('"originalPrice"', '"sellingPrice"', '"discountedPrice"', '"price"'):
-        j = html.find(key)
-        if j >= 0:
-            lines.append(f"KEY {key} " + html[max(0, j - 400):j + 300].replace("\n", " "))
-    shown = 0
+    if img and img.startswith("//"):
+        img = "https:" + img
+    brand = d.get("brand") or d.get("brandName") or ""
+    if isinstance(brand, dict):
+        brand = brand.get("name", "")
+    return {
+        "id": f"{store['key']}-{m.group(1)}",
+        "store": store["name"],
+        "title": re.sub(r"\s+", " ", name).strip(),
+        "brand": brand.strip() if isinstance(brand, str) else "",
+        "price": round(price, 2),
+        "oldPrice": round(old, 2) if old else None,
+        "image": img if isinstance(img, str) and img.startswith("https://") else None,
+        "url": full_url,
+        "category": category,
+    }
+
+
+def parse_page(html: str, store: dict, category: str) -> list[dict]:
+    out: dict[str, dict] = {}
     for blob in json_blobs_from_html(html):
         for d in walk(blob):
-            if shown < 2 and isinstance(d.get("price"), dict) and "current" in d["price"]:
-                lines.append("PRODUCT " + json.dumps(d, ensure_ascii=False)[:5000])
-                shown += 1
-    name = re.sub(r"\W+", "_", path).strip("_")[:40]
+            if store["key"] == "trendyol":
+                p = ty_product_from(d, category)
+            else:
+                p = generic_product_from(d, store, category)
+            if not p:
+                continue
+            prev = out.get(p["id"])
+            # Aynı ürün birden çok yerde geçebilir: eski fiyatı olan kaydı tercih et
+            if prev is None or (not prev.get("oldPrice") and p.get("oldPrice")):
+                out[p["id"]] = p
+    return list(out.values())
+
+
+def write_debug(out_dir: str, label: str, html: str, store: dict) -> None:
+    """Ürün bulunamayan sayfanın yapısını özetler (sayfanın tamamını kaydetmez)."""
+    os.makedirs(out_dir, exist_ok=True)
+    lines = [f"PATH {label} LEN {len(html)}", "HEAD " + html[:1500].replace("\n", " ")]
+    lines += ["SCRIPT " + m.group(0)[:160] for m in re.finditer(r"<script[^>]*>", html)][:60]
+    lines += ["WINVAR " + m.group(0) for m in re.finditer(r"window\[?[\"']?[\w\-\.]+[\"']?\]?\s*=", html)][:40]
+    for i, m in enumerate(re.finditer(store["product_url_regex"], html)):
+        if i >= 4:
+            break
+        s = max(0, m.start() - 900)
+        lines.append(f"CTX{i} " + html[s:m.end() + 900].replace("\n", " "))
+    name = re.sub(r"\W+", "_", store["key"] + label).strip("_")[:60]
     with open(os.path.join(out_dir, f"debug_{name}.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
 
-def scrape_trendyol(cfg: dict, delay: float) -> tuple[list[dict], dict]:
-    """Trendyol kategori sayfalarını tarar.
-
-    Not: Trendyol robots.txt kuralları arama (/sr) ve flaş indirim sayfalarını
-    yasaklıyor; kategori sayfalarına izin veriyor. Bu yüzden sadece onlara bakıyoruz.
-    """
+def scrape_store(store: dict, delay: float) -> tuple[list[dict], dict]:
+    """Bir mağazanın robots.txt'in izin verdiği liste sayfalarını tarar."""
     products: dict[str, dict] = {}
     log_lines = []
-    per_cat = int(cfg.get("pages_per_category", 1))
-    for item in cfg.get("pages", []):
+    per_cat = int(store.get("pages_per_category", 1))
+    pparam = store.get("page_param", "page")
+    for item in store.get("pages", []):
         path, cat = item["path"], item.get("category", "Diğer")
         for page in range(1, per_cat + 1):
-            url = TY_WEB + path + (f"?pi={page}" if page > 1 else "")
+            sep = "&" if "?" in path else "?"
+            url = store["base"] + path + (f"{sep}{pparam}={page}" if page > 1 else "")
             label = path + (f" s{page}" if page > 1 else "")
             try:
                 text = http_get(url, accept="text/html")
-                found = []
-                for blob in json_blobs_from_html(text):
-                    found.extend(ty_parse_any(blob, cat))
+                found = parse_page(text, store, cat)
                 msg = f"{label}: {len(found)} ürün" + ("" if found else f" (sayfa {len(text)} bayt, ürün verisi bulunamadı)")
                 if not found and os.environ.get("SCRAPER_DEBUG_DIR"):
-                    write_debug(os.environ["SCRAPER_DEBUG_DIR"], path, text)
+                    write_debug(os.environ["SCRAPER_DEBUG_DIR"], label, text, store)
             except Blocked as e:
                 found, msg = [], f"{label}: engellendi - {e}"
             except Exception as e:
@@ -297,10 +400,13 @@ def scrape_trendyol(cfg: dict, delay: float) -> tuple[list[dict], dict]:
             time.sleep(delay)
             if new == 0:  # sayfa boş ya da aynı ürünler: sonraki sayfalara gerek yok
                 break
+            if "robots.txt" in msg:
+                break
+    with_old = sum(1 for p in products.values() if p.get("oldPrice"))
     status = {
         "ok": bool(products),
         "count": len(products),
-        "method": "kategori sayfaları",
+        "withOldPrice": with_old,
         "error": None if products else (log_lines[-1] if log_lines else "Sayfa tanımlı değil"),
         "log": log_lines,  # teşhis için: her sayfada ne oldu
     }
@@ -354,7 +460,7 @@ def build_output(products: list[dict], statuses: dict, out_dir: str, cfg: dict) 
         deals.append(d)
 
     # Bir mağaza bu turda başarısız olduysa eski indirimlerini koru
-    stores_failed = {name for name, s in statuses.items() if not s["ok"]}
+    stores_failed = {name.lower() for name, s in statuses.items() if not s["ok"]}
     for old in previous.get("deals", []):
         if old.get("store", "").lower() in stores_failed:
             deals.append(old)
@@ -384,26 +490,33 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, help="deals.json'un yazılacağı klasör")
     ap.add_argument("--fixture", help="ağ yerine bu JSON/HTML dosyasını kullan (test)")
+    ap.add_argument("--store", help="--fixture ile: hangi mağazanın ayrıştırıcısı (varsayılan trendyol)")
     args = ap.parse_args()
 
     cfg = load_json(os.path.join(HERE, "sources.json"), {})
     delay = float(cfg.get("request_delay_seconds", 3))
     statuses, products = {}, []
 
+    stores = cfg.get("stores", [])
     if args.fixture:
         with open(args.fixture, encoding="utf-8") as f:
             text = f.read()
-        try:
+        store = next((st for st in stores if st["key"] == (args.store or "trendyol")), None)
+        if text.lstrip().startswith(("{", "[")) and store["key"] == "trendyol":
             found = ty_parse_any(json.loads(text), "Test")
-        except json.JSONDecodeError:
-            found = [p for b in json_blobs_from_html(text) for p in ty_parse_any(b, "Test")]
+        else:
+            found = parse_page(text if not text.lstrip().startswith(("{", "["))
+                               else f'<script type="application/json">{text}</script>', store, "Test")
         products += found
-        statuses["trendyol"] = {"ok": bool(found), "count": len(found), "method": "fixture", "error": None}
-    elif cfg.get("trendyol", {}).get("enabled"):
-        log("Trendyol taranıyor...")
-        found, st = scrape_trendyol(cfg["trendyol"], delay)
-        products += found
-        statuses["trendyol"] = st
+        statuses[store["name"]] = {"ok": bool(found), "count": len(found), "error": None}
+    else:
+        for store in stores:
+            if not store.get("enabled", True):
+                continue
+            log(f"{store['name']} taranıyor...")
+            found, st = scrape_store(store, delay)
+            products += found
+            statuses[store["name"]] = st
 
     out = build_output(products, statuses, args.out, cfg)
     log(f"\nToplam ürün: {len(products)}, indirim: {len(out['deals'])}")

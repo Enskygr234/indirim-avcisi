@@ -1,43 +1,65 @@
 {
   "min_discount_percent": 10,
-  "max_deals": 600,
+  "max_deals": 800,
   "request_delay_seconds": 4,
-  "trendyol": {
-    "enabled": true,
-    "pages": [
-      {
-        "path": "/cep-telefonu-x-c103498",
-        "category": "Elektronik"
-      },
-      {
-        "path": "/laptop-x-c103108",
-        "category": "Elektronik"
-      },
-      {
-        "path": "/akilli-saat-x-c1240",
-        "category": "Elektronik"
-      },
-      {
-        "path": "/buzdolabi-x-c103623",
-        "category": "Ev"
-      },
-      {
-        "path": "/spor-ayakkabi-x-c109",
-        "category": "Giyim"
-      },
-      {
-        "path": "/kulaklik-x-c1061",
-        "category": "Elektronik"
-      },
-      {
-        "path": "/parfum-x-c86",
-        "category": "Kozmetik"
-      },
-      {
-        "path": "/mont-x-c118",
-        "category": "Giyim"
-      }
-    ],
-    "pages_per_category": 3
-  }
+  "stores": [
+    {
+      "key": "trendyol",
+      "name": "Trendyol",
+      "base": "https://www.trendyol.com",
+      "page_param": "pi",
+      "pages_per_category": 3,
+      "product_url_regex": "-p-(\\d+)",
+      "pages": [
+        {"path": "/cep-telefonu-x-c103498", "category": "Elektronik"},
+        {"path": "/laptop-x-c103108", "category": "Elektronik"},
+        {"path": "/akilli-saat-x-c1240", "category": "Elektronik"},
+        {"path": "/kulaklik-x-c1061", "category": "Elektronik"},
+        {"path": "/buzdolabi-x-c103623", "category": "Ev"},
+        {"path": "/spor-ayakkabi-x-c109", "category": "Giyim"},
+        {"path": "/mont-x-c118", "category": "Giyim"},
+        {"path": "/parfum-x-c86", "category": "Kozmetik"}
+      ]
+    },
+    {
+      "key": "hepsiburada",
+      "name": "Hepsiburada",
+      "base": "https://www.hepsiburada.com",
+      "page_param": "sayfa",
+      "pages_per_category": 2,
+      "product_url_regex": "-p[m]?-([A-Za-z0-9]+)",
+      "pages": [
+        {"path": "/indirimli-urunler", "category": "Karışık"},
+        {"path": "/cep-telefonlari-c-371965", "category": "Elektronik"},
+        {"path": "/laptop-notebook-dizustu-bilgisayarlar-c-98", "category": "Elektronik"},
+        {"path": "/kulakliklar-c-60000616", "category": "Elektronik"},
+        {"path": "/parfumler-c-341420", "category": "Kozmetik"}
+      ]
+    },
+    {
+      "key": "n11",
+      "name": "n11",
+      "base": "https://www.n11.com",
+      "page_param": "pg",
+      "pages_per_category": 2,
+      "product_url_regex": "/urun/[^\"'?#\\s]*?-(\\d{5,})",
+      "pages": [
+        {"path": "/telefon-ve-aksesuarlari/cep-telefonu", "category": "Elektronik"},
+        {"path": "/bilgisayar/dizustu-bilgisayar", "category": "Elektronik"},
+        {"path": "/kozmetik-kisisel-bakim/parfum-ve-deodorant", "category": "Kozmetik"}
+      ]
+    },
+    {
+      "key": "amazon",
+      "name": "Amazon",
+      "base": "https://www.amazon.com.tr",
+      "page_param": "pg",
+      "pages_per_category": 1,
+      "product_url_regex": "/dp/([A-Z0-9]{10})",
+      "pages": [
+        {"path": "/gp/bestsellers/electronics", "category": "Elektronik"},
+        {"path": "/deals", "category": "Karışık"}
+      ]
+    }
+  ]
 }

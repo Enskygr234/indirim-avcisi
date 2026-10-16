@@ -91,14 +91,20 @@ fun DealsScreen(vm: DealsViewModel = viewModel()) {
     val context = LocalContext.current
     var minDiscount by rememberSaveable { mutableIntStateOf(0) }
     var category by rememberSaveable { mutableStateOf<String?>(null) }
+    var store by rememberSaveable { mutableStateOf<String?>(null) }
 
     val feed = state.feed
     val categories = remember(feed) {
         feed?.deals?.map { it.category }?.distinct()?.sorted() ?: emptyList()
     }
-    val visible = remember(feed, minDiscount, category) {
+    val stores = remember(feed) {
+        feed?.deals?.map { it.store }?.distinct()?.sorted() ?: emptyList()
+    }
+    val visible = remember(feed, minDiscount, category, store) {
         feed?.deals?.filter {
-            it.discount >= minDiscount && (category == null || it.category == category)
+            it.discount >= minDiscount &&
+                (category == null || it.category == category) &&
+                (store == null || it.store == store)
         } ?: emptyList()
     }
 
@@ -142,6 +148,21 @@ fun DealsScreen(vm: DealsViewModel = viewModel()) {
                             selected = minDiscount == step,
                             onClick = { minDiscount = step },
                         )
+                    }
+                }
+            }
+            if (stores.size > 1) {
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        item {
+                            Pill("Tüm mağazalar", selected = store == null, onClick = { store = null })
+                        }
+                        items(stores) { s ->
+                            Pill(s, selected = store == s, onClick = { store = s })
+                        }
                     }
                 }
             }
