@@ -20,7 +20,7 @@ GitHub Actions (30 dk'da bir)          Telefon
 
 ## Ayarlar
 
-Hangi ürünlerin taranacağı `scraper/sources.json` içinde. Arama kelimesi eklemek için `queries` listesine satır eklemen yeter.
+Hangi mağazaların ve kategori sayfalarının taranacağı `scraper/sources.json` içinde. Yeni kategori eklemek için mağazanın `pages` listesine satır eklemen yeter.
 
 ## Mağaza durumu
 
