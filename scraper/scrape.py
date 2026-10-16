@@ -50,6 +50,7 @@ class Blocked(Exception):
 
 
 _robots_cache: dict[str, urllib.robotparser.RobotFileParser | None] = {}
+ROBOTS_NOTES: dict[str, str] = {}  # site -> robots.txt durumu (teşhis için)
 
 
 def robots_allows(url: str) -> bool:
@@ -61,14 +62,17 @@ def robots_allows(url: str) -> bool:
             raw = http_get(base + "/robots.txt", check_robots=False, accept="text/plain")
             rp.parse(raw.splitlines())
             _robots_cache[base] = rp
+            ROBOTS_NOTES[base] = f"robots.txt okundu ({len(raw)} bayt)"
         except Blocked as e:  # robots.txt bile reddedildiyse siteye hiç girme
             log(f"  robots.txt reddedildi ({base}): {e}")
             rp = urllib.robotparser.RobotFileParser()
             rp.disallow_all = True
             _robots_cache[base] = rp
+            ROBOTS_NOTES[base] = f"robots.txt isteği reddedildi ({e}); site botlara kapalı sayıldı"
         except Exception as e:  # robots.txt yoksa standart: izinli
             log(f"  robots.txt okunamadı ({base}): {e}")
             _robots_cache[base] = None
+            ROBOTS_NOTES[base] = f"robots.txt okunamadı ({e}); izinli sayıldı"
     rp = _robots_cache[base]
     return True if rp is None else rp.can_fetch(USER_AGENT, url)
 
@@ -408,6 +412,7 @@ def scrape_store(store: dict, delay: float) -> tuple[list[dict], dict]:
         "count": len(products),
         "withOldPrice": with_old,
         "error": None if products else (log_lines[-1] if log_lines else "Sayfa tanımlı değil"),
+        "robots": ROBOTS_NOTES.get(store["base"]),
         "log": log_lines,  # teşhis için: her sayfada ne oldu
     }
     return list(products.values()), status
