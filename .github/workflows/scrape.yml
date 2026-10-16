@@ -39,7 +39,8 @@ jobs:
         continue-on-error: true   # başarısız olsa da durum bilgisi yayımlansın
         run: |
           mkdir -p data-branch
-          python scraper/scrape.py --out data-branch
+          rm -rf data-branch/debug
+          SCRAPER_DEBUG_DIR=data-branch/debug python scraper/scrape.py --out data-branch
 
       - name: Yayımla
         run: |
@@ -50,7 +51,7 @@ jobs:
           git init -q -b data
           git config user.name "indirim-avcisi-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add deals.json history.json
+          git add -A
           git commit -q -m "İndirimler güncellendi $(date -u +%FT%TZ)"
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:data
 

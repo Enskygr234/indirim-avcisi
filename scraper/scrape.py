@@ -235,6 +235,26 @@ def ty_parse_any(obj, category: str) -> list[dict]:
     return out
 
 
+def write_debug(out_dir: str, path: str, html: str) -> None:
+    """Ürün bulunamayan sayfanın yapısını özetler (sayfanın tamamını kaydetmez)."""
+    os.makedirs(out_dir, exist_ok=True)
+    lines = [f"PATH {path} LEN {len(html)}"]
+    lines += ["SCRIPT " + m.group(0)[:160] for m in re.finditer(r"<script[^>]*>", html)][:60]
+    lines += ["WINVAR " + m.group(0) for m in re.finditer(r"window\[?[\"']?[\w\-\.]+[\"']?\]?\s*=", html)][:40]
+    for i, m in enumerate(re.finditer(r"-p-\d+", html)):
+        if i >= 4:
+            break
+        s = max(0, m.start() - 700)
+        lines.append(f"CTX{i} " + html[s:m.end() + 500].replace("\n", " "))
+    for key in ('"originalPrice"', '"sellingPrice"', '"discountedPrice"', '"price"'):
+        j = html.find(key)
+        if j >= 0:
+            lines.append(f"KEY {key} " + html[max(0, j - 400):j + 300].replace("\n", " "))
+    name = re.sub(r"\W+", "_", path).strip("_")[:40]
+    with open(os.path.join(out_dir, f"debug_{name}.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+
 def scrape_trendyol(cfg: dict, delay: float) -> tuple[list[dict], dict]:
     """Trendyol kategori sayfalarını tarar.
 
@@ -252,6 +272,8 @@ def scrape_trendyol(cfg: dict, delay: float) -> tuple[list[dict], dict]:
             for blob in json_blobs_from_html(text):
                 found.extend(ty_parse_any(blob, cat))
             msg = f"{path}: {len(found)} ürün" + ("" if found else f" (sayfa {len(text)} bayt, ürün verisi bulunamadı)")
+            if not found and os.environ.get("SCRAPER_DEBUG_DIR"):
+                write_debug(os.environ["SCRAPER_DEBUG_DIR"], path, text)
         except Blocked as e:
             found, msg = [], f"{path}: engellendi - {e}"
         except Exception as e:
