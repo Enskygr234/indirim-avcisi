@@ -174,7 +174,7 @@ def json_blobs_from_html(html: str):
         except Exception:
             pass
     # window.__SOMETHING__ = {...}
-    for m in re.finditer(r'(?:__[A-Z0-9_\-]+__(?:PROPS)?["\']?\]?)\s*=\s*', html):
+    for m in re.finditer(r'window(?:\[["\'][^"\']+["\']\]|\.\w+)\s*=\s*', html):
         start = m.end()
         if start < len(html) and html[start] in "{[":
             try:
@@ -250,6 +250,12 @@ def write_debug(out_dir: str, path: str, html: str) -> None:
         j = html.find(key)
         if j >= 0:
             lines.append(f"KEY {key} " + html[max(0, j - 400):j + 300].replace("\n", " "))
+    shown = 0
+    for blob in json_blobs_from_html(html):
+        for d in walk(blob):
+            if shown < 2 and isinstance(d.get("price"), dict) and "current" in d["price"]:
+                lines.append("PRODUCT " + json.dumps(d, ensure_ascii=False)[:5000])
+                shown += 1
     name = re.sub(r"\W+", "_", path).strip("_")[:40]
     with open(os.path.join(out_dir, f"debug_{name}.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
