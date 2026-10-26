@@ -106,7 +106,9 @@
           "category": "Elektronik"
         }
       ],
-      "enabled": true
+      "enabled": true,
+      "local_only": true,
+      "note": "Veri merkezi IP'lerini (GitHub Actions) engelliyor; kullanıcının bilgisayarında scraper/local_run.py ile taranır."
     },
     {
       "key": "mediamarkt",
@@ -115,7 +117,7 @@
       "page_param": "page",
       "pages_per_category": 2,
       "product_url_regex": "/tr/product/[^\"'?#\\s]*?-(\\d{6,})\\.html",
-      "note": "Eski fiyat sayfadaki __PRELOADED_STATE__ içindeki strikePrice alanından okunur. /campaign ve promo-list sayfaları robots.txt ile yasak, sadece kategoriler taranır.",
+      "note": "Veri merkezi IP'lerini (GitHub Actions) engelliyor; kullanıcının bilgisayarında scraper/local_run.py ile taranır. Eski fiyat sayfadaki __PRELOADED_STATE__ içindeki strikePrice alanından okunur. /campaign ve promo-list sayfaları robots.txt ile yasak, sadece kategoriler taranır.",
       "pages": [
         {
           "path": "/tr/category/android-telefonlar-675172.html",
@@ -149,7 +151,8 @@
           "path": "/tr/category/kahve-makinesi-806537.html",
           "category": "Ev"
         }
-      ]
+      ],
+      "local_only": true
     },
     {
       "key": "amazon",

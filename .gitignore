@@ -8,3 +8,5 @@ __pycache__/
 data-branch/
 *.apk
 !android/app/debug.keystore
+.local-data/
+.local-data.log

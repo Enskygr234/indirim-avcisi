@@ -46,6 +46,8 @@ jobs:
         run: |
           cd data-branch
           test -f deals.json || exit 0
+          # Okuduğumuz sürüm: yerel tarayıcı bu arada yazdıysa onun sonucunu ezmeyelim
+          BASE=$(git rev-parse HEAD 2>/dev/null || true)
           # Tek commit'lik dal: repo her turda büyümesin
           rm -rf .git
           git init -q -b data
@@ -53,7 +55,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -q -m "İndirimler güncellendi $(date -u +%FT%TZ)"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:data
+          LEASE=${BASE:+--force-with-lease=data:$BASE}
+          git push -q ${LEASE:--f} "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:data \
+            || echo "::warning::data dalı bu arada değişti (yerel tarayıcı yazmış olabilir); bu tur atlandı"
 
       - name: Tarama başarısızsa işaretle
         if: steps.scan.outcome == 'failure'

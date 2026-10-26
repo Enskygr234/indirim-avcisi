@@ -34,6 +34,7 @@ USER_AGENT = (
 )
 HISTORY_POINTS = 120          # ürün başına saklanan fiyat ölçümü
 HISTORY_KEEP_DAYS = 45        # bu kadar gündür görülmeyen ürün geçmişten silinir
+OTHER_RUNNER_STALE_HOURS = 12  # diğer tarayıcının sonucu bundan eskiyse listeden düşer
 
 # Uygulamanın açmasına izin verilen güvenli mağaza alan adları
 SAFE_HOSTS = ("trendyol.com", "hepsiburada.com", "amazon.com.tr", "n11.com", "mediamarkt.com.tr")
@@ -452,6 +453,8 @@ def scrape_store(store: dict, delay: float) -> tuple[list[dict], dict]:
         "error": None if products else (log_lines[-1] if log_lines else "Sayfa tanımlı değil"),
         "robots": ROBOTS_NOTES.get(store["base"]),
         "log": log_lines,  # teşhis için: her sayfada ne oldu
+        "checkedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "runner": "local" if store.get("local_only") else "actions",
     }
     return list(products.values()), status
 
@@ -502,10 +505,33 @@ def build_output(products: list[dict], statuses: dict, out_dir: str, cfg: dict) 
         d["firstSeen"] = prev_by_id.get(p["id"], {}).get("firstSeen", now_s)
         deals.append(d)
 
+    # Bu turda taranmayan mağazalar diğer tarayıcıya ait (GitHub Actions ya da
+    # yerel bilgisayar): son sonuçları yeterince tazeyse aynen korunur.
+    prev_sources = previous.get("sources", {})
+    stale_before = (now - timedelta(hours=OTHER_RUNNER_STALE_HOURS)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    kept_other, stale = set(), set()
+    for store in cfg.get("stores", []):
+        name = store["name"]
+        if name in statuses or not store.get("enabled", True):
+            continue
+        prev = prev_sources.get(name)
+        if not prev:
+            continue
+        # Eski biçimdeki kayıtlarda checkedAt yok: dosyanın tarihi esas alınır
+        checked = prev.get("checkedAt") or previous.get("updatedAt", "")
+        if checked >= stale_before:
+            statuses[name] = prev
+            kept_other.add(name.lower())
+        else:
+            statuses[name] = dict(prev, ok=False, count=0,
+                                  error=f"{OTHER_RUNNER_STALE_HOURS} saattir taranmadı (tarayan bilgisayar kapalı olabilir)")
+            stale.add(name.lower())
+
     # Bir mağaza bu turda başarısız olduysa eski indirimlerini koru
-    stores_failed = {name.lower() for name, s in statuses.items() if not s["ok"]}
+    stores_failed = {name.lower() for name, s in statuses.items()
+                     if not s["ok"] and name.lower() not in kept_other | stale}
     for old in previous.get("deals", []):
-        if old.get("store", "").lower() in stores_failed:
+        if old.get("store", "").lower() in stores_failed | kept_other:
             deals.append(old)
 
     deals.sort(key=lambda d: (-d["discount"], d["price"]))
@@ -534,6 +560,9 @@ def main() -> int:
     ap.add_argument("--out", required=True, help="deals.json'un yazılacağı klasör")
     ap.add_argument("--fixture", help="ağ yerine bu JSON/HTML dosyasını kullan (test)")
     ap.add_argument("--store", help="--fixture ile: hangi mağazanın ayrıştırıcısı (varsayılan trendyol)")
+    ap.add_argument("--local", action="store_true",
+                    help='sadece "local_only" mağazaları tara (veri merkezi IP\'lerini engelleyen siteler; '
+                         "kullanıcının bilgisayarında local_run.py çalıştırır)")
     args = ap.parse_args()
 
     cfg = load_json(os.path.join(HERE, "sources.json"), {})
@@ -554,7 +583,7 @@ def main() -> int:
         statuses[store["name"]] = {"ok": bool(found), "count": len(found), "error": None}
     else:
         for store in stores:
-            if not store.get("enabled", True):
+            if not store.get("enabled", True) or bool(store.get("local_only")) != args.local:
                 continue
             log(f"{store['name']} taranıyor...")
             found, st = scrape_store(store, delay)
