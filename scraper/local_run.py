@@ -16,6 +16,7 @@ from __future__ import annotations
 import io
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
@@ -57,9 +58,19 @@ def git(*args: str, cwd: str = REPO, binary: bool = False, check: bool = True):
     return r.stdout if binary else r.stdout.decode("utf-8", "replace").strip()
 
 
+def remove_tree(path: str) -> None:
+    """Windows'ta git'in salt okunur nesne dosyaları da dahil klasörü siler."""
+    def force(func, p, _exc):
+        os.chmod(p, stat.S_IWRITE)
+        func(p)
+    if os.path.exists(path):
+        kw = {"onexc": force} if sys.version_info >= (3, 12) else {"onerror": force}
+        shutil.rmtree(path, **kw)
+
+
 def fresh_workdir(sha: str | None) -> None:
     """data dalının o anki içeriğini WORK klasörüne çıkarır."""
-    shutil.rmtree(WORK, ignore_errors=True)
+    remove_tree(WORK)
     os.makedirs(WORK)
     if sha:
         tar = git("archive", "--format=tar", sha, binary=True)
@@ -86,7 +97,7 @@ def run_once() -> bool:
         return True
 
     remote = git("remote", "get-url", "origin")
-    shutil.rmtree(os.path.join(WORK, ".git"), ignore_errors=True)
+    remove_tree(os.path.join(WORK, ".git"))
     git("init", "-q", "-b", "data", cwd=WORK)
     git("add", "-A", cwd=WORK)
     git("-c", "user.name=indirim-avcisi-yerel", "-c", "user.email=indirim-avcisi-yerel@users.noreply.github.com",
