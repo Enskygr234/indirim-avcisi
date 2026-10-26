@@ -36,7 +36,7 @@ HISTORY_POINTS = 120          # ürün başına saklanan fiyat ölçümü
 HISTORY_KEEP_DAYS = 45        # bu kadar gündür görülmeyen ürün geçmişten silinir
 
 # Uygulamanın açmasına izin verilen güvenli mağaza alan adları
-SAFE_HOSTS = ("trendyol.com", "hepsiburada.com", "amazon.com.tr", "n11.com")
+SAFE_HOSTS = ("trendyol.com", "hepsiburada.com", "amazon.com.tr", "n11.com", "mediamarkt.com.tr")
 
 
 def log(msg: str) -> None:
@@ -339,6 +339,37 @@ def generic_product_from(d: dict, store: dict, category: str) -> dict | None:
     }
 
 
+# ---------------------------------------------------------- MediaMarkt ----
+
+def mm_prices(html: str) -> dict[str, tuple[float, float | None]]:
+    """MediaMarkt: ürün no -> (güncel fiyat, üstü çizili fiyat).
+
+    Liste sayfasındaki JSON-LD sadece güncel fiyatı verir; eski fiyat
+    window.__PRELOADED_STATE__ içindeki CofrPriceFeature kayıtlarındadır.
+    """
+    m = re.search(r"window\.__PRELOADED_STATE__\s*=\s*", html)
+    if not m:
+        return {}
+    end = html.find("</script>", m.end())
+    raw = html[m.end():end].rstrip().rstrip(";")
+    raw = re.sub(r"(?<=[:\[,])undefined(?=[,\]}])", "null", raw)  # JS -> JSON
+    try:
+        state = json.loads(raw)
+    except ValueError:
+        return {}
+    out = {}
+    for d in walk(state):
+        if d.get("__typename") != "CofrPriceFeature" or not isinstance(d.get("id"), str):
+            continue
+        pid = d["id"].rsplit(":", 1)[-1]
+        price = to_number((d.get("price") or {}).get("amount"))
+        strike = d.get("strikePrice") or {}
+        old = to_number(strike.get("amount")) if strike.get("shouldBeStruck", True) else None
+        if price:
+            out[pid] = (price, old)
+    return out
+
+
 def parse_page(html: str, store: dict, category: str) -> list[dict]:
     out: dict[str, dict] = {}
     for blob in json_blobs_from_html(html):
@@ -353,6 +384,13 @@ def parse_page(html: str, store: dict, category: str) -> list[dict]:
             # Aynı ürün birden çok yerde geçebilir: eski fiyatı olan kaydı tercih et
             if prev is None or (not prev.get("oldPrice") and p.get("oldPrice")):
                 out[p["id"]] = p
+    if store["key"] == "mediamarkt":
+        prices = mm_prices(html)
+        for p in out.values():
+            pid = p["id"].split("-", 1)[1]
+            if pid in prices:
+                p["price"], old = (round(x, 2) if x else None for x in prices[pid])
+                p["oldPrice"] = old if old and old > p["price"] else None
     return list(out.values())
 
 

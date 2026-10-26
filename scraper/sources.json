@@ -94,12 +94,62 @@
           "category": "Elektronik"
         },
         {
-          "path": "/kozmetik-kisisel-bakim/parfum-ve-deodorant",
+          "path": "/parfum-ve-deodorant",
           "category": "Kozmetik"
+        },
+        {
+          "path": "/telefon-ve-aksesuarlari/giyilebilir-teknoloji",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/televizyon-ve-ses-sistemleri/televizyon",
+          "category": "Elektronik"
         }
       ],
-      "enabled": false,
-      "note": "Kapalı: site botlara robots.txt dahil 403 veriyor. Yol: n11 ortaklık programı."
+      "enabled": true
+    },
+    {
+      "key": "mediamarkt",
+      "name": "MediaMarkt",
+      "base": "https://www.mediamarkt.com.tr",
+      "page_param": "page",
+      "pages_per_category": 2,
+      "product_url_regex": "/tr/product/[^\"'?#\\s]*?-(\\d{6,})\\.html",
+      "note": "Eski fiyat sayfadaki __PRELOADED_STATE__ içindeki strikePrice alanından okunur. /campaign ve promo-list sayfaları robots.txt ile yasak, sadece kategoriler taranır.",
+      "pages": [
+        {
+          "path": "/tr/category/android-telefonlar-675172.html",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/tr/category/iphone-644527.html",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/tr/category/laptop-504926.html",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/tr/category/televizyon-465019.html",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/tr/category/tabletler-639520.html",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/tr/category/oyun-konsollari-465863.html",
+          "category": "Elektronik"
+        },
+        {
+          "path": "/tr/category/robot-supurge-465744.html",
+          "category": "Ev"
+        },
+        {
+          "path": "/tr/category/kahve-makinesi-806537.html",
+          "category": "Ev"
+        }
+      ]
     },
     {
       "key": "amazon",

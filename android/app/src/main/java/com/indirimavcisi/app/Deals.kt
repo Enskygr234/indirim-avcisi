@@ -47,7 +47,7 @@ data class DealsFeed(
 
 /** Uygulama sadece bu güvenilir mağazaların sayfalarını açar. */
 object SafeSites {
-    private val hosts = listOf("trendyol.com", "hepsiburada.com", "amazon.com.tr", "n11.com")
+    private val hosts = listOf("trendyol.com", "hepsiburada.com", "amazon.com.tr", "n11.com", "mediamarkt.com.tr")
 
     fun isSafe(url: String): Boolean {
         val uri = try {
