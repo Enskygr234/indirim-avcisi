@@ -34,6 +34,16 @@ Hangi mağazaların ve kategori sayfalarının taranacağı `scraper/sources.jso
 
 Kapalı mağazalar `scraper/sources.json` içinde hazır duruyor; `"enabled": true` yapınca devreye girer.
 
+### Yerel tarayıcı (n11 ve MediaMarkt)
+
+Bu iki site GitHub'ın sunucularını engelliyor, bu yüzden `"local_only": true` olarak işaretli ve bilgisayarda taranıyor. Kurulum (PowerShell'de bir kez):
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Enskygr234/indirim-avcisi/main/scraper/kur-windows.ps1 | iex"
+```
+
+Görev Zamanlayıcı 30 dakikada bir `scraper/local_run.py`'yi çalıştırır; sonuç `data` dalına gider ve GitHub'ın Trendyol sonucuyla birleşir. Bilgisayar 12 saatten uzun kapalı kalırsa bu mağazaların indirimleri listeden düşer, açılınca geri gelir.
+
 ## Yol haritası
 
 1. ✅ Trendyol tarayıcısı ve indirim akışı
