@@ -1,0 +1,2 @@
+PATH /cep-telefonu-x-c103498 s3 LEN 0
+HEAD 

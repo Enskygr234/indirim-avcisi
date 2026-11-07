@@ -1,0 +1,2 @@
+PATH /akilli-saat-x-c1240 s2 LEN 0
+HEAD 
